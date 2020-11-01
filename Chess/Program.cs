@@ -1,9 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Threading;
 namespace TempCs
 {
     class Program
     {
+        public const int sleep = 1000;
+
         private const int cellSizeY = 3;
         private const int cellSizeX = 5;
         private const int fieldWidth = 8;
@@ -17,7 +20,7 @@ namespace TempCs
 
         enum FigureType
         {
-            Pawn = 'P', Knight = 'H', Rook = 'R', Bishop = 'B', Queen = 'Q', King = 'K' 
+            Pawn = 'P', Knight = 'H', Rook = 'R', Bishop = 'B', Queen = 'Q', King = 'K'
         }
 
         static void Main(string[] args)
@@ -26,8 +29,9 @@ namespace TempCs
 
             do
             {
+                Console.Clear();
                 DrawBoard(board);
-                
+
                 string[] coords = ReadFigurePositions();
                 string start = coords[0];
                 string end = coords[1];
@@ -47,14 +51,28 @@ namespace TempCs
                 { 'E', new Dictionary<char, char> { { '1', ' ' }, { '2', ' ' }, { '3', ' ' }, { '4', ' ' }, { '5', ' ' }, { '6', ' ' }, { '7', ' ' }, { '8', ' ' } } },
                 { 'F', new Dictionary<char, char> { { '1', ' ' }, { '2', ' ' }, { '3', 'P' }, { '4', ' ' }, { '5', ' ' }, { '6', ' ' }, { '7', ' ' }, { '8', ' ' } } },
                 { 'G', new Dictionary<char, char> { { '1', 'P' }, { '2', 'P' }, { '3', ' ' }, { '4', 'P' }, { '5', 'P' }, { '6', 'P' }, { '7', 'P' }, { '8', 'P' } } },
-                { 'H', new Dictionary<char, char> { { '1', 'R' }, { '2', 'B' }, { '3', 'H' }, { '4', 'Q' }, { '5', 'K' }, { '6', 'B' }, { '7', 'H' }, { '8', 'R' } } }
+                { 'H', new Dictionary<char, char> { { '1', 'R' }, { '2', 'H' }, { '3', 'B' }, { '4', 'Q' }, { '5', 'K' }, { '6', 'B' }, { '7', 'H' }, { '8', 'R' } } }
             };
         }
-        
+        public static bool IsCorrectReadingFirstChar(char first)
+        {
+            if ((first > 'H') || (first < 'A')) return true;
+
+            else return false;
+        }
+        public static bool IsCorrectReadingSecondChar(char second)
+        {
+            //int fakeNumb;
+            //Возможно я чего то не знаю но так разве не лучше (в оуте был fakeNumber) ?
+            if ((!Int32.TryParse(second.ToString(), out _)) || (second > '8') || (second < '1')) return true;
+
+            else return false;
+        }
+
         private static bool IsCorrectCoordinate(string coord)
         {
-            if(string.IsNullOrEmpty(coord)) return false;
-
+            if (string.IsNullOrEmpty(coord) || (coord.Length > 2) || (IsCorrectReadingFirstChar(coord[0])) || (IsCorrectReadingSecondChar(coord[1]))) return false;
+            //Зачем мы проверяем два раза одно и тоже (строка выше и ретурн)?
             char letter = coord[0];
             char num = coord[1];
             return coord.Length == 2 && letter >= 'A' && letter <= 'H' && num >= '1' && num <= '8';
@@ -64,15 +82,17 @@ namespace TempCs
         {
             do
             {
-                string input = Console.ReadLine().ToUpper();
+                string input = Console.ReadLine().ToUpper().Trim();
                 if (IsCorrectCoordinate(input))
                 {
                     return input;
                 }
                 else
                 {
-                    // TODO чтобы строка не уезжала вправо
+                    Console.SetCursorPosition(messageStartX, messageStartY + 2);
                     Console.WriteLine("Координата не корректна!");
+                    Thread.Sleep(sleep);
+                    ReadFigurePositions();
                 }
             }
             while (true);
@@ -94,27 +114,40 @@ namespace TempCs
         private static void TryMoveFigure(Dictionary<char, Dictionary<char, char>> board, string start, string end)
         {
             char figureSymbol = board[start[0]][start[1]];
-            if(figureSymbol == ' ')
+            if (figureSymbol == ' ')
             {
-                Console.WriteLine("На стартовой точке нет фигуры. Нажмите любую клавишу, чтобы повторить...");
+                Console.SetCursorPosition(messageStartX, messageStartY+2);
+                Console.WriteLine("На стартовой точке нет фигуры.");
+                Console.SetCursorPosition(messageStartX, messageStartY + 3);
+                Console.WriteLine("Нажмите любую клавишу, чтобы повторить...");
+                Console.SetCursorPosition(messageStartX, messageStartY + 4);
+                Console.ReadKey();
+                
                 return;
             }
-
+            if(board[end[0]][end[1]]!=' ')
+			{
+                Console.SetCursorPosition(messageStartX, messageStartY + 2);
+                Console.WriteLine("Вы не можете рубить свою фигуру");
+                Thread.Sleep(sleep);
+                return;
+            }
             bool isCorrect = false;
             FigureType figure = (FigureType)figureSymbol;
-            switch(figure)
+            switch (figure)
             {
-                case FigureType.Pawn:   TryMovePawn  (board, start, end); break;
-                case FigureType.Rook:   TryMoveRook  (board, start, end); break;
+                case FigureType.Pawn: TryMovePawn(board, start, end); break;
+                case FigureType.Rook: TryMoveRook(board, start, end); break;
                 case FigureType.Bishop: TryMoveBishop(board, start, end); break;
                 case FigureType.Knight: TryMoveKnight(board, start, end); break;
-                case FigureType.Queen:  TryMoveQueen (board, start, end); break;
-                case FigureType.King:   TryMoveKing  (board, start, end); break;
+                case FigureType.Queen: TryMoveQueen(board, start, end); break;
+                case FigureType.King: TryMoveKing(board, start, end); break;
             }
 
-            if(!isCorrect)
+            if (!isCorrect)
             {
-                // Вывести ошибку
+                Console.SetCursorPosition(messageStartX, messageStartY);
+                //Я так и не понял какое исключение обрабатывает это условие
                 return;
             }
         }
@@ -122,70 +155,76 @@ namespace TempCs
         private static void MoveFigure(Dictionary<char, Dictionary<char, char>> board, string start, string end, FigureType figure)
         {
             board[start[0]][start[1]] = ' ';
-            board[end[0]]  [end[1]]   = (char) figure;
+            board[end[0]][end[1]] = (char)figure;
         }
 
         private static void TryMoveKing(Dictionary<char, Dictionary<char, char>> board, string start, string end)
         {
-            if(!IsKingCorrect(start, end))
+            if (!IsKingCorrect(start, end))
             {
                 Console.WriteLine("Король" + wrongCoordinatesMessage);
                 return;
             }
+            MoveFigure(board, start, end, FigureType.King);
         }
 
         private static void TryMoveQueen(Dictionary<char, Dictionary<char, char>> board, string start, string end)
         {
-            if(!IsQueenCorrect(start, end))
+            if (!IsQueenCorrect(board,start, end))
             {
                 Console.WriteLine("Королева" + wrongCoordinatesMessage);
                 return;
             }
+            MoveFigure(board, start, end, FigureType.Queen);
         }
 
         private static void TryMoveKnight(Dictionary<char, Dictionary<char, char>> board, string start, string end)
         {
-            if(!IsKnightCorrect(start, end))
+            if (!IsKnightCorrect(start, end))
             {
                 Console.WriteLine("Конь" + wrongCoordinatesMessage);
                 return;
             }
+            MoveFigure(board, start, end, FigureType.Knight);
         }
 
         private static void TryMoveBishop(Dictionary<char, Dictionary<char, char>> board, string start, string end)
         {
-            if(!IsBishopCorrect(board, start, end))
+            if (!IsBishopCorrect(board, start, end))
             {
-                Console.WriteLine("Ферзь" + wrongCoordinatesMessage);
+                Console.WriteLine("Слон" + wrongCoordinatesMessage);
                 return;
             }
 
-            // меняем позицию фигуры на доске
+            
+            
             MoveFigure(board, start, end, FigureType.Bishop);
         }
 
         private static void TryMoveRook(Dictionary<char, Dictionary<char, char>> board, string start, string end)
         {
-            if(!IsRookCorrect(start, end))
+            if (!IsRookCorrect(board,start, end))
             {
                 Console.WriteLine("Ладья" + wrongCoordinatesMessage);
                 return;
             }
 
-            // меняем позицию фигуры на доске
-            MoveFigure(board, start, end, FigureType.Bishop);
+            
+            MoveFigure(board, start, end, FigureType.Rook);
         }
 
         private static void TryMovePawn(Dictionary<char, Dictionary<char, char>> board, string start, string end)
         {
-            if(!IsPawnCorrect(start, end))
+            if (!IsPawnCorrect(start, end))
             {
+                Console.SetCursorPosition(messageStartX, messageStartY+2);
                 Console.WriteLine("Пешка" + wrongCoordinatesMessage);
+                Thread.Sleep(sleep);
                 return;
             }
 
-            // меняем позицию фигуры на доске
-            MoveFigure(board, start, end, FigureType.Bishop);
+            
+            MoveFigure(board, start, end, FigureType.Pawn);
         }
 
         private static bool IsKnightCorrect(string start, string end)
@@ -206,57 +245,117 @@ namespace TempCs
             int deltaY = Math.Abs(end[1] - start[1]);
 
             // ферзь ходит только по диагонале
-            if(deltaX != deltaY)
+            if (deltaX != deltaY)
                 return false;
 
             // а теперь проверяем не перепрыгнул ли он через кого-нибудь
 
-            // определеяем положительный или трицательный шаг
+            // определеяем положительный или отрицательный шаг
             int stepX = 1, stepY = 1;
             char startX = start[0], startY = start[1], endX = end[0], endY = end[1];
 
-            if(end[0] < start[0]) stepX = -1;
-            if(end[1] < start[1]) stepY = -1;
+            if (end[0] < start[0]) stepX = -1;
+            if (end[1] < start[1]) stepY = -1;
 
             // пробегаем все ячейки от начальной позиции до конечной и проверяем, чтобы там никто не стоял
             bool isCorrect = true;
-            char currentX = (char) (startX + stepX), currentY = (char) (startY + stepY);
-            while(currentX != endX && currentY != endY)
+            char currentX = (char)(startX + stepX), currentY = (char)(startY + stepY);
+            while (currentX != endX && currentY != endY)
             {
-                if(board[currentX][currentY] != ' ')
+                if (board[currentX][currentY] != ' ')
                 {
                     isCorrect = false;
                     break;
                 }
 
-                currentX = (char) (currentX + stepX);
-                currentY = (char) (currentY + stepY);
+                currentX = (char)(currentX + stepX);
+                currentY = (char)(currentY + stepY);
             }
 
             return isCorrect;
         }
-
+        private static bool IsXOfKingCorrect(string start, string end)
+		{
+            if (end[1] == start[1] && Math.Abs(end[0] - start[0]) == 1)
+                return true;
+            return false;
+		}
+        private static bool IsYOfKingCorrect(string start, string end)
+		{
+            if (end[0] == start[0] && Math.Abs(end[1] - start[1]) == 1)
+                return true;
+            return false;
+        }
+        private static bool IsYAndXOfKingCorrect(string start, string end)
+		{
+            if (Math.Abs(end[0] - start[0]) == 1 && Math.Abs(end[1] - start[1]) == 1)
+                return true;
+            return false;
+        }
         private static bool IsKingCorrect(string start, string end)
         {
-            throw new NotImplementedException();
+            if (IsYOfKingCorrect(start, end) || IsXOfKingCorrect(start, end) || IsYAndXOfKingCorrect(start, end))
+                return true;
+            return false;
         }
 
-        private static bool IsQueenCorrect(string start, string end)
+        private static bool IsQueenCorrect(Dictionary<char, Dictionary<char, char>> board,string start, string end)
         {
-            throw new NotImplementedException();
+            return (IsRookCorrect(board, start, end) || IsBishopCorrect(board, start, end));
         }
 
-        private static bool IsRookCorrect(string start, string end)
+        private static bool IsRookCorrect(Dictionary<char, Dictionary<char, char>> board,string start, string end)
         {
-            throw new NotImplementedException();
+            if ((start[0] == end[0]) && (start[1] != end[1]))
+			{
+                int stepY = 1;
+                char  startY = start[1], endY = end[1];
+
+                if (end[1] < start[1]) stepY = -1;
+
+                char currentY = (char)(startY + stepY);
+                while (currentY != endY)
+                {
+                    if (board[start[0]][currentY] != ' ')
+                    {
+                        return false;
+                    }
+                    currentY = (char)(currentY + stepY);
+                }
+
+                return true;
+            }                              
+            else if ((start[1] == end[1]) && (start[0] != end[0]))
+			{
+                int stepX = 1;
+                char startX = start[0], endX = end[0];
+
+                if (end[0] < start[0]) stepX = -1;
+
+                char currentX = (char)(startX + startX);
+                while (currentX != endX)
+                {
+                    if (board[currentX][start[1]] != ' ')
+                    {
+                        return false;
+                    }
+                    currentX = (char)(currentX + stepX);
+                }
+
+                return true;
+            }                
+            else
+                return false;
         }
 
         private static bool IsPawnCorrect(string start, string end)
         {
-            throw new NotImplementedException();
+            if (start[0]-1 == end[0] && start[1] == end[1])
+                return true;
+            else
+                return false;
         }
-        
-
+               
         private static void DrawBoard(Dictionary<char, Dictionary<char, char>> board)
         {
             PrintBorder();
@@ -267,8 +366,8 @@ namespace TempCs
         private static void ClearMessages()
         {
             int xStart = messageStartX, yStart = messageStartY;
-            for(int x = xStart; x < xStart + 50; x++)
-                for(int y = yStart; y < yStart + 3; y++)
+            for (int x = xStart; x < xStart + 50; x++)
+                for (int y = yStart; y < yStart + 3; y++)
                 {
                     Console.SetCursorPosition(x, y);
                     Console.Write(' ');
@@ -288,7 +387,7 @@ namespace TempCs
             Console.Write("Введите конечную координату: ");
             string end = ReadCoord();
 
-            return new string[] {start, end};
+            return new string[] { start, end };
         }
 
         public static void PrintBorder()
@@ -348,7 +447,7 @@ namespace TempCs
 
         private static void PrintCoordinates()
         {
-            int x = margin + cellSizeX / 2, y1 = margin - 1, y2 = margin + fieldHeight * (cellSizeY-1) + 1;
+            int x = margin + cellSizeX / 2, y1 = margin - 1, y2 = margin + fieldHeight * (cellSizeY - 1) + 1;
 
             for (char letter = '1'; letter <= '8'; letter++)
             {
@@ -361,7 +460,7 @@ namespace TempCs
                 x += cellSizeX - 1;
             }
 
-            int y = margin + cellSizeY / 2, x1 = margin - 1, x2 = margin + fieldWidth * (cellSizeX-1) + 1;
+            int y = margin + cellSizeY / 2, x1 = margin - 1, x2 = margin + fieldWidth * (cellSizeX - 1) + 1;
             for (char letter = 'A'; letter <= 'H'; letter++)
             {
                 Console.SetCursorPosition(x1, y);
@@ -381,15 +480,15 @@ namespace TempCs
             for (char letter = 'A'; letter <= 'H'; letter++)
                 for (char num = '1'; num <= '8'; num++)
                 {
-                    int iRow    = num - '1';
-                    int iColumn = letter - 'A';                    
+                    int iRow = num - '1';
+                    int iColumn = letter - 'A';
 
                     int x, y;
                     if (iRow == 0) x = margin + cellSizeX / 2;
-                    else           x = margin + iRow * xStep + xStep - 2;
+                    else x = margin + iRow * xStep + xStep - 2;
 
                     if (iColumn == 0) y = margin + cellSizeY / 2;
-                    else              y = margin + iColumn * yStep + yStep - 1;
+                    else y = margin + iColumn * yStep + yStep - 1;
 
                     Console.SetCursorPosition(x, y);
                     Console.Write(board[letter][num]);
